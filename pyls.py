@@ -8,9 +8,9 @@ def load_structure(file_path):
     with open(file_path, 'r') as file:
         return json.load(file)
 
-def find_directory(structure, path):
+def find_directory_or_file(structure, path):
     if path in ('', '.'):
-        return structure
+        return structure, 'directory'
     parts = path.split('/')
     current = structure
     for part in parts:
@@ -22,10 +22,13 @@ def find_directory(structure, path):
                     found = True
                     break
             if not found:
-                return None
+                return None, None
         else:
-            return None
-    return current
+            return None, None
+    if 'contents' in current:
+        return current, 'directory'
+    else:
+        return current, 'file'
 
 def list_directory(directory, show_hidden=False, filter_type=None):
     contents = directory.get('contents', [])
@@ -39,15 +42,19 @@ def list_directory(directory, show_hidden=False, filter_type=None):
 def human_readable_size(size):
     for unit in ['B', 'K', 'M', 'G', 'T']:
         if size < 1024:
-            return f"{size}{unit}"
-        size //= 1024
-    return f"{size}P"
+            if unit == 'B':
+                return f"{size}"
+            return f"{size:.1f}{unit}"
+        size /= 1024
+    return f"{size:.1f}P"
 
 def print_ls(directory, show_hidden=False, reverse=False, sort_by_time=False, filter_type=None):
     items = list_directory(directory, show_hidden, filter_type)
     if sort_by_time:
-        items.sort(key=lambda x: x['time_modified'])
-    if reverse:
+        items.sort(key=lambda x: x['time_modified'], reverse=reverse)
+    else:
+        items.sort(key=lambda x: x['name'], reverse=reverse)
+    if reverse and not sort_by_time:
         items.reverse()
     for item in items:
         print(item['name'])
@@ -55,8 +62,10 @@ def print_ls(directory, show_hidden=False, reverse=False, sort_by_time=False, fi
 def print_ls_long(directory, show_hidden=False, reverse=False, sort_by_time=False, filter_type=None, human_readable=False):
     items = list_directory(directory, show_hidden, filter_type)
     if sort_by_time:
-        items.sort(key=lambda x: x['time_modified'])
-    if reverse:
+        items.sort(key=lambda x: x['time_modified'], reverse=reverse)
+    else:
+        items.sort(key=lambda x: x['name'])
+    if reverse and not sort_by_time:
         items.reverse()
     for item in items:
         size = human_readable_size(item['size']) if human_readable else item['size']
@@ -65,6 +74,19 @@ def print_ls_long(directory, show_hidden=False, reverse=False, sort_by_time=Fals
         name = item['name']
         print(f"{permissions} {size} {time_modified} {name}")
 
+def print_file_long(file, human_readable=False):
+    size = human_readable_size(file['size']) if human_readable else file['size']
+    time_modified = datetime.fromtimestamp(file['time_modified']).strftime('%b %d %H:%M')
+    permissions = file['permissions']
+    name = file['name']
+    print(f"{permissions} {size} {time_modified} ./{name}")
+
+def validate_filter(value):
+    valid_filters = ['file', 'dir']
+    if value not in valid_filters:
+        raise argparse.ArgumentTypeError(f"Invalid filter '{value}'. Available filters are 'file' and 'dir'.")
+    return value
+
 def main():
     parser = argparse.ArgumentParser(description='pyls - List directory contents.')
     parser.add_argument('-A', action='store_true', help='do not ignore entries starting with .')
@@ -72,7 +94,7 @@ def main():
     parser.add_argument('-r', action='store_true', help='reverse order while sorting')
     parser.add_argument('-t', action='store_true', help='sort by modification time')
     parser.add_argument('-H', action='store_true', help='show human-readable sizes')
-    parser.add_argument('--filter', choices=['file', 'dir'], help='filter by type (file or dir)')
+    parser.add_argument('--filter', type=validate_filter, help='filter by type (file or dir)')
     parser.add_argument('path', nargs='?', default='', help='path to list')
     args = parser.parse_args()
 
@@ -82,15 +104,22 @@ def main():
         sys.exit(1)
 
     structure = load_structure(file_path)
-    directory = find_directory(structure, args.path)
-    if directory is None:
+    item, item_type = find_directory_or_file(structure, args.path)
+    if item is None:
         print(f"Error: cannot access '{args.path}': No such file or directory")
         sys.exit(1)
 
     if args.l:
-        print_ls_long(directory, show_hidden=args.A, reverse=args.r, sort_by_time=args.t, filter_type=args.filter, human_readable=args.H)
+        if item_type == 'directory':
+            print_ls_long(item, show_hidden=args.A, reverse=args.r, sort_by_time=args.t, filter_type=args.filter, human_readable=args.H)
+        elif item_type == 'file':
+            print_file_long(item, human_readable=args.H)
     else:
-        print_ls(directory, show_hidden=args.A, reverse=args.r, sort_by_time=args.t, filter_type=args.filter)
+        if item_type == 'directory':
+            print_ls(item, show_hidden=args.A, reverse=args.r, sort_by_time=args.t, filter_type=args.filter)
+        elif item_type == 'file':
+            print(item['name'])
 
 if __name__ == "__main__":
     main()
+
