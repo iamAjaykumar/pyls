@@ -24,6 +24,7 @@ pip install .```
 
 ### Using `python -m
 ```sh
+pip install -r requirements.txt
 python -m pyls```
 
 Usage
@@ -67,3 +68,8 @@ pyls --filter file
 
 Combine multiple options
 pyls -l -A -t -r -h --filter file
+
+
+
+##Run tests 
+- pytest
