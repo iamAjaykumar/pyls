@@ -4,12 +4,13 @@ import sys
 import os
 import argparse
 from datetime import datetime
+from typing import Any, Dict, List, Tuple, Union
 
-def load_structure(file_path):
+def load_structure(file_path: str) -> Dict[str, Any]:
     with open(file_path, 'r') as file:
         return json.load(file)
 
-def find_directory_or_file(structure, path):
+def find_directory_or_file(structure: Dict[str, Any], path: str) -> Tuple[Union[Dict[str, Any], None], Union[str, None]]:
     if path in ('', '.'):
         return structure, 'directory'
     parts = path.split('/')
@@ -31,7 +32,7 @@ def find_directory_or_file(structure, path):
     else:
         return current, 'file'
 
-def list_directory(directory, show_hidden=False, filter_type=None):
+def list_directory(directory: Dict[str, Any], show_hidden: bool = False, filter_type: Union[str, None] = None) -> List[Dict[str, Any]]:
     contents = directory.get('contents', [])
     items = [item for item in contents if show_hidden or not item['name'].startswith('.')]
     if filter_type == 'file':
@@ -40,7 +41,7 @@ def list_directory(directory, show_hidden=False, filter_type=None):
         items = [item for item in items if 'contents' in item]
     return items
 
-def human_readable_size(size):
+def human_readable_size(size: int) -> str:
     for unit in ['B', 'K', 'M', 'G', 'T']:
         if size < 1024:
             if unit == 'B':
@@ -49,7 +50,7 @@ def human_readable_size(size):
         size /= 1024
     return f"{size:.1f}P"
 
-def print_ls(directory, show_hidden=False, reverse=False, sort_by_time=False, filter_type=None):
+def print_ls(directory: Dict[str, Any], show_hidden: bool = False, reverse: bool = False, sort_by_time: bool = False, filter_type: Union[str, None] = None) -> None:
     items = list_directory(directory, show_hidden, filter_type)
     if sort_by_time:
         items.sort(key=lambda x: x['time_modified'], reverse=reverse)
@@ -58,11 +59,10 @@ def print_ls(directory, show_hidden=False, reverse=False, sort_by_time=False, fi
     if reverse and not sort_by_time:
         items.reverse()
     for item in items:
-        print(item['name'],end= "  ")
+        print(item['name'], end="  ")
     print()
-    
 
-def print_ls_long(directory, show_hidden=False, reverse=False, sort_by_time=False, filter_type=None, human_readable=False):
+def print_ls_long(directory: Dict[str, Any], show_hidden: bool = False, reverse: bool = False, sort_by_time: bool = False, filter_type: Union[str, None] = None, human_readable: bool = False) -> None:
     items = list_directory(directory, show_hidden, filter_type)
     if sort_by_time:
         items.sort(key=lambda x: x['time_modified'], reverse=reverse)
@@ -77,19 +77,20 @@ def print_ls_long(directory, show_hidden=False, reverse=False, sort_by_time=Fals
         name = item['name']
         print(f"{permissions:<10} {size:>5} {time_modified} {name}")
 
-def print_file_long(file, human_readable=False):
+def print_file_long(file: Dict[str, Any], human_readable: bool = False) -> None:
     size = human_readable_size(file['size']) if human_readable else file['size']
     time_modified = datetime.fromtimestamp(file['time_modified']).strftime('%b %d %H:%M')
     permissions = file['permissions']
     name = file['name']
     print(f"{permissions:<10} {size:>5} {time_modified} ./{name}")
-def validate_filter(value):
+
+def validate_filter(value: str) -> str:
     valid_filters = ['file', 'dir']
     if value not in valid_filters:
         raise argparse.ArgumentTypeError(f"Invalid filter '{value}'. Available filters are 'file' and 'dir'.")
     return value
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='pyls - List directory contents.', add_help=False)
     parser.add_argument('-A', action='store_true', help='do not ignore entries starting with .')
     parser.add_argument('-l', action='store_true', help='use a long listing format')
@@ -125,5 +126,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
