@@ -21,8 +21,49 @@ You can install `pyls` using `pip`:
 pip install .```
 
 
+
 ### Using `python -m
 ```sh
 python -m pyls```
 
+Usage
+The pyls command provides various options to customize the output:
 
+pyls [options] [path]
+Options
+-A: Do not ignore entries starting with .
+-l: Use a long listing format
+-r: Reverse order while sorting
+-t: Sort by modification time
+-h: Show human-readable sizes
+--filter: Filter by type (file or dir)
+--help: Show help message and exit
+
+
+Examples
+List directory contents in the current directory
+
+pyls
+List directory contents in long format
+
+pyls -l
+List all files, including hidden ones
+
+pyls -A
+List directory contents sorted by modification time
+
+pyls -t
+List directory contents in reverse order:
+
+pyls -r
+List directory contents with human-readable file sizes
+
+pyls -h
+Filter to show only directories:
+pyls --filter dir
+
+Filter to show only files
+pyls --filter file
+
+Combine multiple options
+pyls -l -A -t -r -h --filter file
